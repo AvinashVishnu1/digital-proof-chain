@@ -204,11 +204,15 @@ const Dashboard = () => {
               <p className="text-sm text-muted-foreground">Monitor ongoing investigations</p>
             </Card>
 
-            <Card className="p-6 hover:shadow-lg transition-all cursor-pointer">
-              <Users className="h-10 w-10 text-blue-500 mb-4" />
-              <h3 className="text-lg font-semibold text-foreground mb-2">Team Members</h3>
-              <p className="text-sm text-muted-foreground">View authorized personnel</p>
-            </Card>
+            {roles.includes('admin') && (
+              <Link to="/roles">
+                <Card className="p-6 hover:shadow-lg transition-all cursor-pointer border-2 border-primary/20">
+                  <Users className="h-10 w-10 text-primary mb-4" />
+                  <h3 className="text-lg font-semibold text-foreground mb-2">Role Management</h3>
+                  <p className="text-sm text-muted-foreground">Assign user roles</p>
+                </Card>
+              </Link>
+            )}
           </div>
         )}
 
