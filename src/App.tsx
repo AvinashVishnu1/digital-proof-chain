@@ -9,6 +9,7 @@ import Dashboard from "./pages/Dashboard";
 import EvidenceRecords from "./pages/EvidenceRecords";
 import CustodyChain from "./pages/CustodyChain";
 import RoleManagement from "./pages/RoleManagement";
+import ActiveCases from "./pages/ActiveCases";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -26,6 +27,7 @@ const App = () => (
           <Route path="/evidence" element={<EvidenceRecords />} />
           <Route path="/custody" element={<CustodyChain />} />
           <Route path="/roles" element={<RoleManagement />} />
+          <Route path="/cases" element={<ActiveCases />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

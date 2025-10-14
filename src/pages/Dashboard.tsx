@@ -200,11 +200,13 @@ const Dashboard = () => {
               </Card>
             </Link>
 
-            <Card className="p-6 hover:shadow-lg transition-all cursor-pointer">
-              <Activity className="h-10 w-10 text-green-500 mb-4" />
-              <h3 className="text-lg font-semibold text-foreground mb-2">Active Cases</h3>
-              <p className="text-sm text-muted-foreground">Monitor ongoing investigations</p>
-            </Card>
+            <Link to="/cases">
+              <Card className="p-6 hover:shadow-lg transition-all cursor-pointer">
+                <Activity className="h-10 w-10 text-green-500 mb-4" />
+                <h3 className="text-lg font-semibold text-foreground mb-2">Active Cases</h3>
+                <p className="text-sm text-muted-foreground">Monitor ongoing investigations</p>
+              </Card>
+            </Link>
 
             {roles.includes('admin') && (
               <Link to="/roles">
