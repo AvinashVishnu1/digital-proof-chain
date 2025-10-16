@@ -53,6 +53,7 @@ const evidenceSchema = z.object({
   description: z.string().min(1, "Description is required").max(1000),
   location: z.string().max(255).optional(),
   notes: z.string().max(1000).optional(),
+  file: z.instanceof(File).optional(),
 });
 
 type EvidenceFormValues = z.infer<typeof evidenceSchema>;
@@ -73,6 +74,7 @@ const EvidenceRecords = () => {
       description: "",
       location: "",
       notes: "",
+      file: undefined,
     },
   });
 
@@ -119,6 +121,28 @@ const EvidenceRecords = () => {
 
   const onSubmit = async (values: EvidenceFormValues) => {
     try {
+      let storage_url = null;
+
+      // Handle file upload if file is provided
+      if (values.file) {
+        const fileExt = values.file.name.split('.').pop();
+        const fileName = `${values.evidence_number}_${Date.now()}.${fileExt}`;
+        const filePath = `${userId}/${fileName}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from('evidence-files')
+          .upload(filePath, values.file);
+
+        if (uploadError) throw uploadError;
+
+        // Get public URL
+        const { data: { publicUrl } } = supabase.storage
+          .from('evidence-files')
+          .getPublicUrl(filePath);
+
+        storage_url = publicUrl;
+      }
+
       // Generate hash from evidence data
       const dataToHash = JSON.stringify({
         evidence_number: values.evidence_number,
@@ -155,6 +179,7 @@ const EvidenceRecords = () => {
         hash_value,
         collected_by: userId,
         status: "collected",
+        storage_url,
       }]);
 
       if (error) throw error;
@@ -355,6 +380,31 @@ const EvidenceRecords = () => {
                           {...field}
                         />
                       </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="file"
+                  render={({ field: { value, onChange, ...field } }) => (
+                    <FormItem>
+                      <FormLabel>Upload Evidence File (Optional)</FormLabel>
+                      <FormControl>
+                        <Input 
+                          type="file"
+                          accept=".mp4,.mp3,.jpg,.jpeg,.doc,.docx,.pdf"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            onChange(file);
+                          }}
+                          {...field}
+                        />
+                      </FormControl>
+                      <p className="text-xs text-muted-foreground">
+                        Supported formats: MP4, MP3, JPG, DOC, PDF (Max 50MB)
+                      </p>
                       <FormMessage />
                     </FormItem>
                   )}
