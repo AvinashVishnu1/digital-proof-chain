@@ -171,14 +171,45 @@ const EvidenceRecords = () => {
 
   const handleDelete = async (id: string, evidence_number: string) => {
     try {
-      const { error } = await supabase
+      // First, get the evidence record to archive it
+      const { data: evidenceRecord, error: fetchError } = await supabase
+        .from("evidence")
+        .select("*")
+        .eq("id", id)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      // Archive the evidence in deleted_evidence table
+      const { error: archiveError } = await supabase
+        .from("deleted_evidence")
+        .insert([{
+          original_evidence_id: evidenceRecord.id,
+          evidence_number: evidenceRecord.evidence_number,
+          case_number: evidenceRecord.case_number,
+          type: evidenceRecord.type,
+          description: evidenceRecord.description,
+          storage_url: evidenceRecord.storage_url,
+          hash_value: evidenceRecord.hash_value,
+          location: evidenceRecord.location,
+          status: evidenceRecord.status,
+          notes: evidenceRecord.notes,
+          collected_by: evidenceRecord.collected_by,
+          collected_at: evidenceRecord.collected_at,
+          deleted_by: userId,
+        }]);
+
+      if (archiveError) throw archiveError;
+
+      // Now delete the evidence
+      const { error: deleteError } = await supabase
         .from("evidence")
         .delete()
         .eq("id", id);
 
-      if (error) throw error;
+      if (deleteError) throw deleteError;
 
-      toast.success(`Evidence ${evidence_number} deleted successfully`);
+      toast.success(`Evidence ${evidence_number} deleted and archived`);
       await fetchEvidence();
     } catch (error: any) {
       toast.error(error.message || "Failed to delete evidence");

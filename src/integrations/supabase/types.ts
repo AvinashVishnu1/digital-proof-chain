@@ -112,6 +112,63 @@ export type Database = {
           },
         ]
       }
+      deleted_evidence: {
+        Row: {
+          case_number: string
+          collected_at: string
+          collected_by: string | null
+          deleted_at: string
+          deleted_by: string | null
+          deletion_reason: string | null
+          description: string
+          evidence_number: string
+          hash_value: string
+          id: string
+          location: string | null
+          notes: string | null
+          original_evidence_id: string
+          status: string
+          storage_url: string | null
+          type: string
+        }
+        Insert: {
+          case_number: string
+          collected_at: string
+          collected_by?: string | null
+          deleted_at?: string
+          deleted_by?: string | null
+          deletion_reason?: string | null
+          description: string
+          evidence_number: string
+          hash_value: string
+          id?: string
+          location?: string | null
+          notes?: string | null
+          original_evidence_id: string
+          status: string
+          storage_url?: string | null
+          type: string
+        }
+        Update: {
+          case_number?: string
+          collected_at?: string
+          collected_by?: string | null
+          deleted_at?: string
+          deleted_by?: string | null
+          deletion_reason?: string | null
+          description?: string
+          evidence_number?: string
+          hash_value?: string
+          id?: string
+          location?: string | null
+          notes?: string | null
+          original_evidence_id?: string
+          status?: string
+          storage_url?: string | null
+          type?: string
+        }
+        Relationships: []
+      }
       evidence: {
         Row: {
           case_number: string
