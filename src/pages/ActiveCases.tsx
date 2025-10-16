@@ -1,19 +1,15 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { Shield, ArrowLeft, Loader2, XCircle } from "lucide-react";
+import { Shield, ArrowLeft, Loader2, XCircle, CheckCircle } from "lucide-react";
 import { toast } from "sonner";
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -23,6 +19,7 @@ interface CaseData {
   evidence_count: number;
   latest_date: string;
   statuses: string[];
+  case_status: string;
 }
 
 const ActiveCases = () => {
@@ -52,14 +49,16 @@ const ActiveCases = () => {
 
       if (casesError) throw casesError;
 
-      // Filter only open cases
-      const openCases = casesData?.filter(c => c.status === 'open').map(c => c.case_number) || [];
+      // Create a map of case statuses
+      const caseStatusMap = new Map<string, string>();
+      casesData?.forEach(c => {
+        caseStatusMap.set(c.case_number, c.status);
+      });
 
-      // Fetch evidence for open cases
+      // Fetch all evidence
       const { data, error } = await supabase
         .from("evidence")
-        .select("case_number, status, collected_at")
-        .in("case_number", openCases.length > 0 ? openCases : [""]);
+        .select("case_number, status, collected_at");
 
       if (error) throw error;
 
@@ -73,6 +72,7 @@ const ActiveCases = () => {
             evidence_count: 0,
             latest_date: record.collected_at,
             statuses: [],
+            case_status: caseStatusMap.get(record.case_number) || 'open',
           });
         }
         
@@ -98,19 +98,19 @@ const ActiveCases = () => {
     }
   };
 
-  const handleCloseCase = async (caseNumber: string) => {
+  const handleStatusChange = async (caseNumber: string, newStatus: string) => {
     try {
       const { error } = await supabase
         .from("cases")
-        .update({ status: "closed" })
+        .update({ status: newStatus })
         .eq("case_number", caseNumber);
 
       if (error) throw error;
 
-      toast.success(`Case ${caseNumber} marked as closed`);
+      toast.success(`Case ${caseNumber} marked as ${newStatus}`);
       await fetchCases();
     } catch (error: any) {
-      toast.error(error.message || "Failed to close case");
+      toast.error(error.message || "Failed to update case status");
       console.error(error);
     }
   };
@@ -126,6 +126,12 @@ const ActiveCases = () => {
       default:
         return "bg-gray-500/10 text-gray-500 border-gray-500/20";
     }
+  };
+
+  const getCaseStatusColor = (status: string) => {
+    return status === 'open' 
+      ? "bg-green-500/10 text-green-500 border-green-500/20" 
+      : "bg-gray-500/10 text-gray-500 border-gray-500/20";
   };
 
   if (loading) {
@@ -153,7 +159,7 @@ const ActiveCases = () => {
             </Button>
             <div className="flex items-center gap-2">
               <Shield className="h-6 w-6 text-primary" />
-              <h1 className="text-xl font-semibold">Active Cases</h1>
+              <h1 className="text-xl font-semibold">All Cases</h1>
             </div>
           </div>
         </div>
@@ -171,38 +177,36 @@ const ActiveCases = () => {
             {cases.map((caseData) => (
               <Card key={caseData.case_number} className="hover:shadow-lg transition-shadow">
                 <CardHeader>
-                  <div className="flex items-start justify-between">
+                  <div className="flex items-start justify-between gap-4">
                     <div className="cursor-pointer flex-1" onClick={() => navigate(`/evidence?case=${caseData.case_number}`)}>
                       <CardTitle className="text-lg">Case #{caseData.case_number}</CardTitle>
                       <CardDescription>
                         Last updated: {new Date(caseData.latest_date).toLocaleDateString()}
                       </CardDescription>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-shrink-0">
                       <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20">
                         {caseData.evidence_count} Evidence {caseData.evidence_count === 1 ? 'Item' : 'Items'}
                       </Badge>
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive">
-                            <XCircle className="h-4 w-4" />
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Close Case?</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              Are you sure you want to close case "{caseData.case_number}"? It will no longer appear in active cases.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction onClick={() => handleCloseCase(caseData.case_number)}>
-                              Close Case
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
+                      <Badge variant="outline" className={getCaseStatusColor(caseData.case_status)}>
+                        {caseData.case_status === 'open' ? (
+                          <><CheckCircle className="h-3 w-3 mr-1" /> Active</>
+                        ) : (
+                          <><XCircle className="h-3 w-3 mr-1" /> Closed</>
+                        )}
+                      </Badge>
+                      <Select
+                        value={caseData.case_status}
+                        onValueChange={(value) => handleStatusChange(caseData.case_number, value)}
+                      >
+                        <SelectTrigger className="w-[140px] h-8">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="open">Mark as Active</SelectItem>
+                          <SelectItem value="closed">Mark as Closed</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
                   </div>
                 </CardHeader>
