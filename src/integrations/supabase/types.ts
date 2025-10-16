@@ -38,6 +38,33 @@ export type Database = {
         }
         Relationships: []
       }
+      cases: {
+        Row: {
+          case_number: string
+          created_at: string
+          created_by: string | null
+          id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          case_number: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          case_number?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       custody_chain: {
         Row: {
           condition: string | null

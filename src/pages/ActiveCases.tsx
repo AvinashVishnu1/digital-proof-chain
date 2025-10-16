@@ -1,7 +1,19 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { Shield, ArrowLeft, Loader2 } from "lucide-react";
+import { Shield, ArrowLeft, Loader2, XCircle } from "lucide-react";
+import { toast } from "sonner";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -33,9 +45,21 @@ const ActiveCases = () => {
 
   const fetchCases = async () => {
     try {
+      // Fetch all cases
+      const { data: casesData, error: casesError } = await supabase
+        .from("cases")
+        .select("case_number, status");
+
+      if (casesError) throw casesError;
+
+      // Filter only open cases
+      const openCases = casesData?.filter(c => c.status === 'open').map(c => c.case_number) || [];
+
+      // Fetch evidence for open cases
       const { data, error } = await supabase
         .from("evidence")
-        .select("case_number, status, collected_at");
+        .select("case_number, status, collected_at")
+        .in("case_number", openCases.length > 0 ? openCases : [""]);
 
       if (error) throw error;
 
@@ -71,6 +95,23 @@ const ActiveCases = () => {
       console.error("Error fetching cases:", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleCloseCase = async (caseNumber: string) => {
+    try {
+      const { error } = await supabase
+        .from("cases")
+        .update({ status: "closed" })
+        .eq("case_number", caseNumber);
+
+      if (error) throw error;
+
+      toast.success(`Case ${caseNumber} marked as closed`);
+      await fetchCases();
+    } catch (error: any) {
+      toast.error(error.message || "Failed to close case");
+      console.error(error);
     }
   };
 
@@ -128,18 +169,41 @@ const ActiveCases = () => {
         ) : (
           <div className="grid gap-4">
             {cases.map((caseData) => (
-              <Card key={caseData.case_number} className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => navigate(`/evidence?case=${caseData.case_number}`)}>
+              <Card key={caseData.case_number} className="hover:shadow-lg transition-shadow">
                 <CardHeader>
                   <div className="flex items-start justify-between">
-                    <div>
+                    <div className="cursor-pointer flex-1" onClick={() => navigate(`/evidence?case=${caseData.case_number}`)}>
                       <CardTitle className="text-lg">Case #{caseData.case_number}</CardTitle>
                       <CardDescription>
                         Last updated: {new Date(caseData.latest_date).toLocaleDateString()}
                       </CardDescription>
                     </div>
-                    <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20">
-                      {caseData.evidence_count} Evidence {caseData.evidence_count === 1 ? 'Item' : 'Items'}
-                    </Badge>
+                    <div className="flex items-center gap-2">
+                      <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20">
+                        {caseData.evidence_count} Evidence {caseData.evidence_count === 1 ? 'Item' : 'Items'}
+                      </Badge>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive">
+                            <XCircle className="h-4 w-4" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Close Case?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Are you sure you want to close case "{caseData.case_number}"? It will no longer appear in active cases.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => handleCloseCase(caseData.case_number)}>
+                              Close Case
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
                   </div>
                 </CardHeader>
                 <CardContent>

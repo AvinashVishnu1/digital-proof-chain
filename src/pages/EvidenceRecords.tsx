@@ -13,7 +13,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Shield, ArrowLeft, Plus, FileText } from "lucide-react";
+import { Shield, ArrowLeft, Plus, FileText, Trash2 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -119,6 +130,21 @@ const EvidenceRecords = () => {
       
       const hash_value = await generateHash(dataToHash);
 
+      // Check if case exists, if not create it
+      const { data: existingCase } = await supabase
+        .from("cases")
+        .select("case_number")
+        .eq("case_number", values.case_number)
+        .single();
+
+      if (!existingCase) {
+        await supabase.from("cases").insert([{
+          case_number: values.case_number,
+          status: "open",
+          created_by: userId,
+        }]);
+      }
+
       const { error } = await supabase.from("evidence").insert([{
         evidence_number: values.evidence_number,
         case_number: values.case_number,
@@ -139,6 +165,23 @@ const EvidenceRecords = () => {
       await fetchEvidence();
     } catch (error: any) {
       toast.error(error.message || "Failed to create evidence record");
+      console.error(error);
+    }
+  };
+
+  const handleDelete = async (id: string, evidence_number: string) => {
+    try {
+      const { error } = await supabase
+        .from("evidence")
+        .delete()
+        .eq("id", id);
+
+      if (error) throw error;
+
+      toast.success(`Evidence ${evidence_number} deleted successfully`);
+      await fetchEvidence();
+    } catch (error: any) {
+      toast.error(error.message || "Failed to delete evidence");
       console.error(error);
     }
   };
@@ -325,6 +368,7 @@ const EvidenceRecords = () => {
                     <TableHead>Status</TableHead>
                     <TableHead>Location</TableHead>
                     <TableHead>Created</TableHead>
+                    <TableHead className="w-[80px]">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -342,6 +386,29 @@ const EvidenceRecords = () => {
                       <TableCell>{item.location || "-"}</TableCell>
                       <TableCell>
                         {new Date(item.created_at).toLocaleDateString()}
+                      </TableCell>
+                      <TableCell>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive">
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Delete Evidence?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Are you sure you want to delete evidence "{item.evidence_number}"? This action cannot be undone.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction onClick={() => handleDelete(item.id, item.evidence_number)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                                Delete
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
                       </TableCell>
                     </TableRow>
                   ))}
